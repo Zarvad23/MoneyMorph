@@ -12,6 +12,9 @@ namespace MoneyMorph
         private ComboBox _toBox;
         private TextBox _amountBox;
         private Label _answerLabel;
+        private NumericUpDown _decimalsBox;
+        private DataGridView _ratesGrid;
+        private bool _isDarkMode;
 
         // Этот конструктор создаёт форму и настраивает все элементы
         public MainForm()
@@ -19,14 +22,16 @@ namespace MoneyMorph
             _converter = new CurrencyConverter();
             BuildLayout();
             LoadCurrencies();
+            RefreshRatesTable();
+            ApplyTheme();
         }
 
         // Эта функция вручную добавляет на форму все элементы управления
         private void BuildLayout()
         {
             Text = "MoneyMorph - учебный пример";
-            Width = 440;
-            Height = 320;
+            Width = 760;
+            Height = 430;
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
@@ -86,23 +91,87 @@ namespace MoneyMorph
             };
             Controls.Add(_amountBox);
 
+            Label decimalsLabel = new Label
+            {
+                Text = "Округление (знаков):",
+                AutoSize = true,
+                Location = new Point(40, 190)
+            };
+            Controls.Add(decimalsLabel);
+
+            _decimalsBox = new NumericUpDown
+            {
+                Location = new Point(200, 186),
+                Width = 60,
+                Minimum = 0,
+                Maximum = 6,
+                Value = 2
+            };
+            Controls.Add(_decimalsBox);
+
             Button convertButton = new Button
             {
                 Text = "Посчитать",
-                Location = new Point(160, 190),
+                Location = new Point(40, 230),
                 Width = 100
             };
             convertButton.Click += ConvertButton_Click;
             Controls.Add(convertButton);
 
+            Button swapButton = new Button
+            {
+                Text = "Поменять",
+                Location = new Point(160, 230),
+                Width = 100
+            };
+            swapButton.Click += SwapButton_Click;
+            Controls.Add(swapButton);
+
+            Button updateRatesButton = new Button
+            {
+                Text = "Обновить курсы",
+                Location = new Point(40, 270),
+                Width = 120
+            };
+            updateRatesButton.Click += UpdateRatesButton_Click;
+            Controls.Add(updateRatesButton);
+
+            Button themeButton = new Button
+            {
+                Text = "Смена темы",
+                Location = new Point(180, 270),
+                Width = 120
+            };
+            themeButton.Click += ThemeButton_Click;
+            Controls.Add(themeButton);
+
             _answerLabel = new Label
             {
                 Text = "Результат появится ниже",
                 AutoSize = true,
-                Location = new Point(40, 240),
+                Location = new Point(40, 320),
                 ForeColor = Color.DarkGreen
             };
             Controls.Add(_answerLabel);
+
+            _ratesGrid = new DataGridView
+            {
+                Location = new Point(360, 60),
+                Width = 360,
+                Height = 220,
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                AllowUserToResizeColumns = false,
+                AllowUserToResizeRows = false,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            };
+            _ratesGrid.Columns.Add("Code", "Код валюты");
+            _ratesGrid.Columns.Add("Usd", "Цена за 1 единицу (USD)");
+            Controls.Add(_ratesGrid);
         }
 
         // Эта функция наполняет выпадающие списки названиями валют
@@ -153,8 +222,83 @@ namespace MoneyMorph
                 return;
             }
 
-            decimal result = _converter.Convert(fromCode, toCode, amount);
-            _answerLabel.Text = $"{amount:0.##} {fromCode} = {result:0.##} {toCode}";
+            int decimals = (int)_decimalsBox.Value;
+            decimal result = _converter.Convert(fromCode, toCode, amount, decimals);
+            string amountText = amount.ToString("F2");
+            string resultText = result.ToString("F" + decimals);
+            _answerLabel.Text = $"{amountText} {fromCode} = {resultText} {toCode}";
+        }
+
+        // Эта функция обновляет таблицу с курсами на экране
+        private void RefreshRatesTable()
+        {
+            _ratesGrid.Rows.Clear();
+            CurrencyInfo[] all = _converter.GetAllCurrencies();
+            foreach (CurrencyInfo info in all)
+            {
+                _ratesGrid.Rows.Add(info.Code, info.PriceInUsd.ToString("F4"));
+            }
+        }
+
+        // Эта функция меняет местами выбранные валюты, когда нажата кнопка "Поменять"
+        private void SwapButton_Click(object? sender, EventArgs e)
+        {
+            object? temp = _fromBox.SelectedItem;
+            _fromBox.SelectedItem = _toBox.SelectedItem;
+            _toBox.SelectedItem = temp;
+        }
+
+        // Эта функция имитирует обновление курсов и сразу перерисовывает таблицу
+        private void UpdateRatesButton_Click(object? sender, EventArgs e)
+        {
+            _converter.UpdateRatesRandomly();
+            RefreshRatesTable();
+            _answerLabel.Text = "Курсы обновлены, можно пересчитать сумму";
+        }
+
+        // Эта функция по кнопке меняет оформление формы на светлое или тёмное
+        private void ThemeButton_Click(object? sender, EventArgs e)
+        {
+            _isDarkMode = !_isDarkMode;
+            ApplyTheme();
+        }
+
+        // Эта функция задаёт цвета элементов в зависимости от выбранной темы
+        private void ApplyTheme()
+        {
+            Color backColor = _isDarkMode ? Color.FromArgb(34, 34, 34) : Color.White;
+            Color textColor = _isDarkMode ? Color.WhiteSmoke : Color.Black;
+
+            BackColor = backColor;
+            ForeColor = textColor;
+
+            foreach (Control control in Controls)
+            {
+                control.ForeColor = textColor;
+                if (control is Panel or DataGridView)
+                {
+                    control.BackColor = backColor;
+                }
+                else if (control is Button button)
+                {
+                    button.BackColor = _isDarkMode ? Color.FromArgb(64, 64, 64) : Color.LightGray;
+                    button.ForeColor = textColor;
+                }
+            }
+
+            _ratesGrid.BackgroundColor = backColor;
+            _ratesGrid.DefaultCellStyle.BackColor = backColor;
+            _ratesGrid.DefaultCellStyle.ForeColor = textColor;
+            _ratesGrid.DefaultCellStyle.SelectionBackColor = _isDarkMode ? Color.FromArgb(85, 85, 85) : Color.LightBlue;
+            _ratesGrid.DefaultCellStyle.SelectionForeColor = textColor;
+            _ratesGrid.RowsDefaultCellStyle.BackColor = backColor;
+            _ratesGrid.RowsDefaultCellStyle.ForeColor = textColor;
+            _ratesGrid.ColumnHeadersDefaultCellStyle.BackColor = _isDarkMode ? Color.FromArgb(48, 48, 48) : Color.WhiteSmoke;
+            _ratesGrid.ColumnHeadersDefaultCellStyle.ForeColor = textColor;
+            _ratesGrid.EnableHeadersVisualStyles = false;
+            _ratesGrid.AlternatingRowsDefaultCellStyle.BackColor = _isDarkMode ? Color.FromArgb(45, 45, 45) : Color.FromArgb(245, 245, 245);
+
+            _answerLabel.ForeColor = _isDarkMode ? Color.LightGreen : Color.DarkGreen;
         }
     }
 }

@@ -25,6 +25,7 @@ namespace MoneyMorph
     {
         // Здесь мы храним все валюты в обычном списке для простоты понимания
         private readonly List<CurrencyInfo> _allCurrencies;
+        private readonly Random _random;
 
         // Этот конструктор наполняет список валют предустановленными значениями
         public CurrencyConverter()
@@ -35,8 +36,14 @@ namespace MoneyMorph
                 new CurrencyInfo("EUR", 1.09m),
                 new CurrencyInfo("GBP", 1.28m),
                 new CurrencyInfo("JPY", 0.0070m),
-                new CurrencyInfo("RUB", 0.011m)
+                new CurrencyInfo("RUB", 0.011m),
+                new CurrencyInfo("CNY", 0.14m),
+                new CurrencyInfo("CHF", 1.12m),
+                new CurrencyInfo("CAD", 0.73m),
+                new CurrencyInfo("AUD", 0.67m),
+                new CurrencyInfo("TRY", 0.031m)
             };
+            _random = new Random();
         }
 
         // Эта функция возвращает список кодов всех доступных валют
@@ -64,7 +71,7 @@ namespace MoneyMorph
         }
 
         // Эта функция выполняет пересчёт суммы из одной валюты в другую
-        public decimal Convert(string fromCode, string toCode, decimal amount)
+        public decimal Convert(string fromCode, string toCode, decimal amount, int decimals)
         {
             CurrencyInfo? fromCurrency = FindCurrency(fromCode);
             CurrencyInfo? toCurrency = FindCurrency(toCode);
@@ -76,7 +83,43 @@ namespace MoneyMorph
 
             decimal usdValue = amount * fromCurrency.PriceInUsd;
             decimal targetValue = usdValue / toCurrency.PriceInUsd;
-            return decimal.Round(targetValue, 2);
+            int safeDecimals = Math.Clamp(decimals, 0, 6);
+            return decimal.Round(targetValue, safeDecimals);
+        }
+
+        // Эта функция возвращает копию списка валют, чтобы показать его в таблице
+        public CurrencyInfo[] GetAllCurrencies()
+        {
+            CurrencyInfo[] copy = new CurrencyInfo[_allCurrencies.Count];
+            for (int i = 0; i < _allCurrencies.Count; i++)
+            {
+                CurrencyInfo original = _allCurrencies[i];
+                copy[i] = new CurrencyInfo(original.Code, original.PriceInUsd);
+            }
+
+            return copy;
+        }
+
+        // Эта функция слегка меняет курсы валют, имитируя живое обновление
+        public void UpdateRatesRandomly()
+        {
+            foreach (CurrencyInfo info in _allCurrencies)
+            {
+                if (string.Equals(info.Code, "USD", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                decimal changePercent = (decimal)_random.NextDouble() * 0.04m - 0.02m;
+                decimal newPrice = info.PriceInUsd + info.PriceInUsd * changePercent;
+
+                if (newPrice <= 0)
+                {
+                    newPrice = info.PriceInUsd;
+                }
+
+                info.PriceInUsd = decimal.Round(newPrice, 4);
+            }
         }
     }
 }
