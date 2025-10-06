@@ -5,11 +5,12 @@ namespace MoneyMorph
 {
     internal static class Program
     {
-        // Эта функция запускает главное окно приложения
+        // Эта функция служит точкой входа и открывает главное окно
         [STAThread]
         private static void Main()
         {
-            ApplicationConfiguration.Initialize();
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());
         }
     }

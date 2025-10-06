@@ -3,64 +3,80 @@ using System.Collections.Generic;
 
 namespace MoneyMorph
 {
-    // Этот класс хранит данные об одной валюте
-    public class CurrencyRate
+    // Этот класс описывает одну валюту и её курс
+    public class CurrencyInfo
     {
-        // Это свойство хранит буквенный код валюты
-        public string Code { get; set; }
+        // Этот текст хранит код валюты в виде понятных букв
+        public string Code;
 
-        // Это свойство хранит курс одной единицы валюты к доллару
-        public decimal RateToUsd { get; set; }
+        // Это число показывает, сколько стоит одна единица валюты в долларах США
+        public decimal PriceInUsd;
 
-        // Этот конструктор создаёт валюту с заданным кодом и курсом
-        public CurrencyRate(string code, decimal rateToUsd)
+        // Этот конструктор просто сохраняет код и курс, которые мы передаём
+        public CurrencyInfo(string code, decimal priceInUsd)
         {
             Code = code;
-            RateToUsd = rateToUsd;
+            PriceInUsd = priceInUsd;
         }
     }
 
-    // Этот класс выполняет простые операции конвертации валют
+    // Этот класс делает простейшие вычисления по конвертации валют
     public class CurrencyConverter
     {
-        private readonly Dictionary<string, CurrencyRate> _rates;
+        // Здесь мы храним все валюты в обычном списке для простоты понимания
+        private readonly List<CurrencyInfo> _allCurrencies;
 
-        // Этот конструктор заполняет словарь доступных валют
+        // Этот конструктор наполняет список валют предустановленными значениями
         public CurrencyConverter()
         {
-            _rates = new Dictionary<string, CurrencyRate>(StringComparer.OrdinalIgnoreCase)
+            _allCurrencies = new List<CurrencyInfo>
             {
-                { "USD", new CurrencyRate("USD", 1.00m) },
-                { "EUR", new CurrencyRate("EUR", 1.09m) },
-                { "GBP", new CurrencyRate("GBP", 1.28m) },
-                { "JPY", new CurrencyRate("JPY", 0.0070m) },
-                { "RUB", new CurrencyRate("RUB", 0.011m) }
+                new CurrencyInfo("USD", 1.00m),
+                new CurrencyInfo("EUR", 1.09m),
+                new CurrencyInfo("GBP", 1.28m),
+                new CurrencyInfo("JPY", 0.0070m),
+                new CurrencyInfo("RUB", 0.011m)
             };
         }
 
-        // Эта функция проверяет, есть ли валюта в словаре
-        public bool HasCurrency(string code)
+        // Эта функция возвращает список кодов всех доступных валют
+        public string[] GetCurrencyCodes()
         {
-            return _rates.ContainsKey(code);
+            string[] codes = new string[_allCurrencies.Count];
+            for (int i = 0; i < _allCurrencies.Count; i++)
+            {
+                codes[i] = _allCurrencies[i].Code;
+            }
+            return codes;
         }
 
-        // Эта функция возвращает список кодов доступных валют
-        public List<string> GetSupportedCodes()
+        // Эта функция ищет валюту по коду и возвращает найденный объект или null
+        private CurrencyInfo? FindCurrency(string code)
         {
-            return new List<string>(_rates.Keys);
+            foreach (CurrencyInfo info in _allCurrencies)
+            {
+                if (string.Equals(info.Code, code, StringComparison.OrdinalIgnoreCase))
+                {
+                    return info;
+                }
+            }
+            return null;
         }
 
-        // Эта функция конвертирует сумму из одной валюты в другую
+        // Эта функция выполняет пересчёт суммы из одной валюты в другую
         public decimal Convert(string fromCode, string toCode, decimal amount)
         {
-            if (!HasCurrency(fromCode) || !HasCurrency(toCode))
+            CurrencyInfo? fromCurrency = FindCurrency(fromCode);
+            CurrencyInfo? toCurrency = FindCurrency(toCode);
+
+            if (fromCurrency == null || toCurrency == null)
             {
-                throw new ArgumentException("Неизвестный код валюты");
+                throw new ArgumentException("Выбрана валюта, которой нет в списке.");
             }
 
-            decimal usdAmount = amount * _rates[fromCode].RateToUsd;
-            decimal targetAmount = usdAmount / _rates[toCode].RateToUsd;
-            return decimal.Round(targetAmount, 2);
+            decimal usdValue = amount * fromCurrency.PriceInUsd;
+            decimal targetValue = usdValue / toCurrency.PriceInUsd;
+            return decimal.Round(targetValue, 2);
         }
     }
 }

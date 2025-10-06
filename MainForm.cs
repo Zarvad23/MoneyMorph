@@ -4,77 +4,76 @@ using System.Windows.Forms;
 
 namespace MoneyMorph
 {
-    // Эта форма отвечает за отображение простого графического интерфейса
+    // Эта форма показывает пользователю кнопки и поля для конвертации
     public class MainForm : Form
     {
         private readonly CurrencyConverter _converter;
-        private ComboBox _fromCombo;
-        private ComboBox _toCombo;
+        private ComboBox _fromBox;
+        private ComboBox _toBox;
         private TextBox _amountBox;
-        private Label _resultLabel;
+        private Label _answerLabel;
 
-        // Этот конструктор настраивает элементы и подготавливает данные
+        // Этот конструктор создаёт форму и настраивает все элементы
         public MainForm()
         {
             _converter = new CurrencyConverter();
-            InitializeComponents();
-            FillCurrencyBoxes();
+            BuildLayout();
+            LoadCurrencies();
         }
 
-        // Эта функция создаёт и размещает элементы формы
-        private void InitializeComponents()
+        // Эта функция вручную добавляет на форму все элементы управления
+        private void BuildLayout()
         {
-            Text = "MoneyMorph - Учебный конвертер валют";
-            Width = 420;
+            Text = "MoneyMorph - учебный пример";
+            Width = 440;
             Height = 320;
             StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
 
-            Label titleLabel = new Label
+            Label helpLabel = new Label
             {
-                Text = "Простой конвертер валют",
-                Font = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Bold),
+                Text = "Введите сумму и выберите направление обмена",
                 AutoSize = true,
-                Location = new Point(80, 20)
+                Location = new Point(40, 20)
             };
-            Controls.Add(titleLabel);
+            Controls.Add(helpLabel);
 
             Label fromLabel = new Label
             {
-                Text = "Из какой валюты",
+                Text = "Исходная валюта:",
                 AutoSize = true,
                 Location = new Point(40, 70)
             };
             Controls.Add(fromLabel);
 
-            _fromCombo = new ComboBox
+            _fromBox = new ComboBox
             {
                 Location = new Point(200, 66),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 160
+                Width = 180,
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
-            Controls.Add(_fromCombo);
+            Controls.Add(_fromBox);
 
             Label toLabel = new Label
             {
-                Text = "В какую валюту",
+                Text = "Нужная валюта:",
                 AutoSize = true,
                 Location = new Point(40, 110)
             };
             Controls.Add(toLabel);
 
-            _toCombo = new ComboBox
+            _toBox = new ComboBox
             {
                 Location = new Point(200, 106),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 160
+                Width = 180,
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
-            Controls.Add(_toCombo);
+            Controls.Add(_toBox);
 
             Label amountLabel = new Label
             {
-                Text = "Сумма",
+                Text = "Сумма:",
                 AutoSize = true,
                 Location = new Point(40, 150)
             };
@@ -83,78 +82,79 @@ namespace MoneyMorph
             _amountBox = new TextBox
             {
                 Location = new Point(200, 146),
-                Width = 160
+                Width = 180
             };
             Controls.Add(_amountBox);
 
             Button convertButton = new Button
             {
-                Text = "Конвертировать",
-                Location = new Point(140, 190),
-                Width = 140
+                Text = "Посчитать",
+                Location = new Point(160, 190),
+                Width = 100
             };
-            convertButton.Click += OnConvertClick;
+            convertButton.Click += ConvertButton_Click;
             Controls.Add(convertButton);
 
-            _resultLabel = new Label
+            _answerLabel = new Label
             {
-                Text = "Результат появится здесь",
+                Text = "Результат появится ниже",
                 AutoSize = true,
                 Location = new Point(40, 240),
-                ForeColor = Color.DarkBlue
+                ForeColor = Color.DarkGreen
             };
-            Controls.Add(_resultLabel);
+            Controls.Add(_answerLabel);
         }
 
-        // Эта функция заполняет списки валют кодами из конвертера
-        private void FillCurrencyBoxes()
+        // Эта функция наполняет выпадающие списки названиями валют
+        private void LoadCurrencies()
         {
-            var codes = _converter.GetSupportedCodes();
-            foreach (var code in codes)
+            string[] codes = _converter.GetCurrencyCodes();
+            foreach (string code in codes)
             {
-                _fromCombo.Items.Add(code);
-                _toCombo.Items.Add(code);
+                _fromBox.Items.Add(code);
+                _toBox.Items.Add(code);
             }
 
-            if (_fromCombo.Items.Count > 0)
+            if (_fromBox.Items.Count > 0)
             {
-                _fromCombo.SelectedIndex = 0;
+                _fromBox.SelectedIndex = 0;
             }
-            if (_toCombo.Items.Count > 1)
+
+            if (_toBox.Items.Count > 1)
             {
-                _toCombo.SelectedIndex = 1;
+                _toBox.SelectedIndex = 1;
             }
         }
 
-        // Эта функция выполняет конвертацию после нажатия кнопки
-        private void OnConvertClick(object? sender, EventArgs e)
+        // Эта функция запускается, когда пользователь нажимает на кнопку подсчёта
+        private void ConvertButton_Click(object? sender, EventArgs e)
         {
-            if (_fromCombo.SelectedItem is not string fromCode)
+            if (_fromBox.SelectedItem is not string fromCode)
             {
-                MessageBox.Show("Пожалуйста, выберите исходную валюту.", "Предупреждение");
+                MessageBox.Show("Пожалуйста, выберите валюту, с которой начинается обмен.");
                 return;
             }
 
-            if (_toCombo.SelectedItem is not string toCode)
+            if (_toBox.SelectedItem is not string toCode)
             {
-                MessageBox.Show("Пожалуйста, выберите целевую валюту.", "Предупреждение");
+                MessageBox.Show("Пожалуйста, выберите валюту, которую хотите получить.");
                 return;
             }
 
             if (string.Equals(fromCode, toCode, StringComparison.OrdinalIgnoreCase))
             {
-                MessageBox.Show("Выберите разные валюты для конвертации.", "Подсказка");
+                MessageBox.Show("Для обмена выберите две разные валюты.");
                 return;
             }
 
             if (!decimal.TryParse(_amountBox.Text, out decimal amount) || amount < 0)
             {
-                MessageBox.Show("Введите положительное число без лишних символов.", "Ошибка ввода");
+                MessageBox.Show("Введите положительное число без лишних символов.");
                 return;
             }
 
             decimal result = _converter.Convert(fromCode, toCode, amount);
-            _resultLabel.Text = $"{amount:0.##} {fromCode} = {result:0.##} {toCode}";
+            _answerLabel.Text = $"{amount:0.##} {fromCode} = {result:0.##} {toCode}";
         }
     }
 }
