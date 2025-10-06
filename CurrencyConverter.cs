@@ -155,7 +155,7 @@ namespace MoneyMorph
                         double rateToCurrency = rateNode.GetDouble();
                         if (rateToCurrency > 0)
                         {
-                            decimal safeRate = Convert.ToDecimal(rateToCurrency);
+                            decimal safeRate = System.Convert.ToDecimal(rateToCurrency);
                             decimal newPrice = 1m / safeRate;
                             info.PriceInUsd = decimal.Round(newPrice, 6, MidpointRounding.AwayFromZero);
                         }
