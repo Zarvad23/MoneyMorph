@@ -37,168 +37,173 @@ namespace MoneyMorph
         // Эта функция вручную добавляет на форму все элементы управления
         private void BuildLayout()
         {
-            AutoScaleMode = AutoScaleMode.None;
             Text = "MoneyMorph - учебный пример";
-            Width = 820;
-            Height = 460;
             StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
+            MinimumSize = new Size(820, 480);
 
-            Panel inputPanel = new Panel
+            TableLayoutPanel mainLayout = new TableLayoutPanel
             {
-                Location = new Point(20, 20),
-                Size = new Size(320, 320)
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 2,
+                Padding = new Padding(15)
             };
-            Controls.Add(inputPanel);
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45f));
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55f));
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            Controls.Add(mainLayout);
+
+            TableLayoutPanel inputLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 8,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(0, 0, 10, 0)
+            };
+            inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            for (int i = 0; i < 8; i++)
+            {
+                inputLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            }
+            mainLayout.Controls.Add(inputLayout, 0, 0);
 
             Label helpLabel = new Label
             {
                 Text = "Введите сумму и выберите направление обмена",
-                AutoSize = true,
-                Location = new Point(0, 0)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(helpLabel);
+            inputLayout.Controls.Add(helpLabel, 0, 0);
+            inputLayout.SetColumnSpan(helpLabel, 2);
 
             Label fromLabel = new Label
             {
                 Text = "Исходная валюта:",
-                AutoSize = true,
-                Location = new Point(0, 50)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(fromLabel);
+            inputLayout.Controls.Add(fromLabel, 0, 1);
 
             _fromBox = new ComboBox
             {
-                Location = new Point(160, 46),
-                Width = 180,
+                Dock = DockStyle.Fill,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            inputPanel.Controls.Add(_fromBox);
+            inputLayout.Controls.Add(_fromBox, 1, 1);
 
             Label toLabel = new Label
             {
                 Text = "Нужная валюта:",
-                AutoSize = true,
-                Location = new Point(0, 90)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(toLabel);
+            inputLayout.Controls.Add(toLabel, 0, 2);
 
             _toBox = new ComboBox
             {
-                Location = new Point(160, 86),
-                Width = 180,
+                Dock = DockStyle.Fill,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            inputPanel.Controls.Add(_toBox);
+            inputLayout.Controls.Add(_toBox, 1, 2);
 
             Label amountLabel = new Label
             {
                 Text = "Сумма:",
-                AutoSize = true,
-                Location = new Point(0, 130)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(amountLabel);
+            inputLayout.Controls.Add(amountLabel, 0, 3);
 
             _amountBox = new TextBox
             {
-                Location = new Point(160, 126),
-                Width = 180
+                Dock = DockStyle.Fill
             };
-            inputPanel.Controls.Add(_amountBox);
+            inputLayout.Controls.Add(_amountBox, 1, 3);
 
             Label decimalsLabel = new Label
             {
                 Text = "Округление (знаков):",
-                AutoSize = true,
-                Location = new Point(0, 170)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(decimalsLabel);
+            inputLayout.Controls.Add(decimalsLabel, 0, 4);
 
             _decimalsBox = new NumericUpDown
             {
-                Location = new Point(160, 166),
-                Width = 60,
+                Dock = DockStyle.Left,
                 Minimum = 0,
                 Maximum = 6,
-                Value = 2
+                Value = 2,
+                Width = 80
             };
-            inputPanel.Controls.Add(_decimalsBox);
+            inputLayout.Controls.Add(_decimalsBox, 1, 4);
+
+            FlowLayoutPanel buttonPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true
+            };
+            inputLayout.Controls.Add(buttonPanel, 0, 5);
+            inputLayout.SetColumnSpan(buttonPanel, 2);
 
             Button convertButton = new Button
             {
                 Text = "Посчитать",
-                Location = new Point(0, 210),
-                Width = 100
+                AutoSize = true
             };
             convertButton.Click += ConvertButton_Click;
-            inputPanel.Controls.Add(convertButton);
+            buttonPanel.Controls.Add(convertButton);
 
             Button swapButton = new Button
             {
                 Text = "Поменять",
-                Location = new Point(120, 210),
-                Width = 100
+                AutoSize = true
             };
             swapButton.Click += SwapButton_Click;
-            inputPanel.Controls.Add(swapButton);
+            buttonPanel.Controls.Add(swapButton);
 
             _updateRatesButton = new Button
             {
                 Text = "Обновить курсы",
-                Location = new Point(0, 250),
-                Width = 120
+                AutoSize = true
             };
             _updateRatesButton.Click += UpdateRatesButton_Click;
-            inputPanel.Controls.Add(_updateRatesButton);
+            buttonPanel.Controls.Add(_updateRatesButton);
 
             Button themeButton = new Button
             {
                 Text = "Смена темы",
-                Location = new Point(140, 250),
-                Width = 120
+                AutoSize = true
             };
             themeButton.Click += ThemeButton_Click;
-            inputPanel.Controls.Add(themeButton);
+            buttonPanel.Controls.Add(themeButton);
 
             _connectionLabel = new Label
             {
                 Text = "Связь: нет данных",
-                AutoSize = true,
-                Location = new Point(0, 290)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(_connectionLabel);
+            inputLayout.Controls.Add(_connectionLabel, 0, 6);
+            inputLayout.SetColumnSpan(_connectionLabel, 2);
 
             _lastUpdateLabel = new Label
             {
                 Text = "Последнее обновление: нет",
-                AutoSize = true,
-                Location = new Point(0, 310)
+                AutoSize = true
             };
-            inputPanel.Controls.Add(_lastUpdateLabel);
-
-            _answerLabel = new Label
-            {
-                Text = "Результат появится ниже",
-                AutoSize = true,
-                Location = new Point(20, 360),
-                ForeColor = Color.DarkGreen
-            };
-            Controls.Add(_answerLabel);
+            inputLayout.Controls.Add(_lastUpdateLabel, 0, 7);
+            inputLayout.SetColumnSpan(_lastUpdateLabel, 2);
 
             GroupBox ratesGroup = new GroupBox
             {
                 Text = "Текущие курсы",
-                Location = new Point(360, 20),
-                Size = new Size(420, 320)
+                Dock = DockStyle.Fill
             };
-            Controls.Add(ratesGroup);
+            mainLayout.Controls.Add(ratesGroup, 1, 0);
 
             _ratesGrid = new DataGridView
             {
-                Location = new Point(15, 30),
-                Width = 380,
-                Height = 250,
+                Dock = DockStyle.Fill,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -212,6 +217,18 @@ namespace MoneyMorph
             _ratesGrid.Columns.Add("Code", "Код валюты");
             _ratesGrid.Columns.Add("Usd", "Цена за 1 единицу (USD)");
             ratesGroup.Controls.Add(_ratesGrid);
+
+            _answerLabel = new Label
+            {
+                Text = "Результат появится ниже",
+                AutoSize = true,
+                ForeColor = Color.DarkGreen,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 10, 0, 0)
+            };
+            mainLayout.Controls.Add(_answerLabel, 0, 1);
+            mainLayout.SetColumnSpan(_answerLabel, 2);
 
             // Этот таймер автоматически запрашивает курсы с заданным интервалом
             _autoUpdateTimer = new System.Windows.Forms.Timer
