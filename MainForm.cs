@@ -18,7 +18,7 @@ namespace MoneyMorph
         private Label _connectionLabel = null!;
         private Label _lastUpdateLabel = null!;
         private Button _updateRatesButton = null!;
-        private Timer _autoUpdateTimer = null!;
+        private System.Windows.Forms.Timer _autoUpdateTimer = null!;
         private bool _isUpdatingRates;
         private bool _connectionOnline;
         private bool _isDarkMode;
@@ -214,7 +214,7 @@ namespace MoneyMorph
             ratesGroup.Controls.Add(_ratesGrid);
 
             // Этот таймер автоматически запрашивает курсы с заданным интервалом
-            _autoUpdateTimer = new Timer
+            _autoUpdateTimer = new System.Windows.Forms.Timer
             {
                 Interval = 4000
             };
