@@ -8,12 +8,12 @@ namespace MoneyMorph
     public class MainForm : Form
     {
         private readonly CurrencyConverter _converter;
-        private ComboBox _fromBox;
-        private ComboBox _toBox;
-        private TextBox _amountBox;
-        private Label _answerLabel;
-        private NumericUpDown _decimalsBox;
-        private DataGridView _ratesGrid;
+        private ComboBox _fromBox = null!;
+        private ComboBox _toBox = null!;
+        private TextBox _amountBox = null!;
+        private Label _answerLabel = null!;
+        private NumericUpDown _decimalsBox = null!;
+        private DataGridView _ratesGrid = null!;
         private bool _isDarkMode;
 
         // Этот конструктор создаёт форму и настраивает все элементы
@@ -29,136 +29,152 @@ namespace MoneyMorph
         // Эта функция вручную добавляет на форму все элементы управления
         private void BuildLayout()
         {
+            AutoScaleMode = AutoScaleMode.None;
             Text = "MoneyMorph - учебный пример";
-            Width = 760;
-            Height = 430;
+            Width = 820;
+            Height = 460;
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
+
+            Panel inputPanel = new Panel
+            {
+                Location = new Point(20, 20),
+                Size = new Size(320, 320)
+            };
+            Controls.Add(inputPanel);
 
             Label helpLabel = new Label
             {
                 Text = "Введите сумму и выберите направление обмена",
                 AutoSize = true,
-                Location = new Point(40, 20)
+                Location = new Point(0, 0)
             };
-            Controls.Add(helpLabel);
+            inputPanel.Controls.Add(helpLabel);
 
             Label fromLabel = new Label
             {
                 Text = "Исходная валюта:",
                 AutoSize = true,
-                Location = new Point(40, 70)
+                Location = new Point(0, 50)
             };
-            Controls.Add(fromLabel);
+            inputPanel.Controls.Add(fromLabel);
 
             _fromBox = new ComboBox
             {
-                Location = new Point(200, 66),
+                Location = new Point(160, 46),
                 Width = 180,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            Controls.Add(_fromBox);
+            inputPanel.Controls.Add(_fromBox);
 
             Label toLabel = new Label
             {
                 Text = "Нужная валюта:",
                 AutoSize = true,
-                Location = new Point(40, 110)
+                Location = new Point(0, 90)
             };
-            Controls.Add(toLabel);
+            inputPanel.Controls.Add(toLabel);
 
             _toBox = new ComboBox
             {
-                Location = new Point(200, 106),
+                Location = new Point(160, 86),
                 Width = 180,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            Controls.Add(_toBox);
+            inputPanel.Controls.Add(_toBox);
 
             Label amountLabel = new Label
             {
                 Text = "Сумма:",
                 AutoSize = true,
-                Location = new Point(40, 150)
+                Location = new Point(0, 130)
             };
-            Controls.Add(amountLabel);
+            inputPanel.Controls.Add(amountLabel);
 
             _amountBox = new TextBox
             {
-                Location = new Point(200, 146),
+                Location = new Point(160, 126),
                 Width = 180
             };
-            Controls.Add(_amountBox);
+            inputPanel.Controls.Add(_amountBox);
 
             Label decimalsLabel = new Label
             {
                 Text = "Округление (знаков):",
                 AutoSize = true,
-                Location = new Point(40, 190)
+                Location = new Point(0, 170)
             };
-            Controls.Add(decimalsLabel);
+            inputPanel.Controls.Add(decimalsLabel);
 
             _decimalsBox = new NumericUpDown
             {
-                Location = new Point(200, 186),
+                Location = new Point(160, 166),
                 Width = 60,
                 Minimum = 0,
                 Maximum = 6,
                 Value = 2
             };
-            Controls.Add(_decimalsBox);
+            inputPanel.Controls.Add(_decimalsBox);
 
             Button convertButton = new Button
             {
                 Text = "Посчитать",
-                Location = new Point(40, 230),
+                Location = new Point(0, 210),
                 Width = 100
             };
             convertButton.Click += ConvertButton_Click;
-            Controls.Add(convertButton);
+            inputPanel.Controls.Add(convertButton);
 
             Button swapButton = new Button
             {
                 Text = "Поменять",
-                Location = new Point(160, 230),
+                Location = new Point(120, 210),
                 Width = 100
             };
             swapButton.Click += SwapButton_Click;
-            Controls.Add(swapButton);
+            inputPanel.Controls.Add(swapButton);
 
             Button updateRatesButton = new Button
             {
                 Text = "Обновить курсы",
-                Location = new Point(40, 270),
+                Location = new Point(0, 250),
                 Width = 120
             };
             updateRatesButton.Click += UpdateRatesButton_Click;
-            Controls.Add(updateRatesButton);
+            inputPanel.Controls.Add(updateRatesButton);
 
             Button themeButton = new Button
             {
                 Text = "Смена темы",
-                Location = new Point(180, 270),
+                Location = new Point(140, 250),
                 Width = 120
             };
             themeButton.Click += ThemeButton_Click;
-            Controls.Add(themeButton);
+            inputPanel.Controls.Add(themeButton);
 
             _answerLabel = new Label
             {
                 Text = "Результат появится ниже",
                 AutoSize = true,
-                Location = new Point(40, 320),
+                Location = new Point(20, 360),
                 ForeColor = Color.DarkGreen
             };
             Controls.Add(_answerLabel);
 
+            GroupBox ratesGroup = new GroupBox
+            {
+                Text = "Текущие курсы",
+                Location = new Point(360, 20),
+                Size = new Size(420, 320)
+            };
+            Controls.Add(ratesGroup);
+
             _ratesGrid = new DataGridView
             {
-                Location = new Point(360, 60),
-                Width = 360,
-                Height = 220,
+                Location = new Point(15, 30),
+                Width = 380,
+                Height = 250,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -171,7 +187,7 @@ namespace MoneyMorph
             };
             _ratesGrid.Columns.Add("Code", "Код валюты");
             _ratesGrid.Columns.Add("Usd", "Цена за 1 единицу (USD)");
-            Controls.Add(_ratesGrid);
+            ratesGroup.Controls.Add(_ratesGrid);
         }
 
         // Эта функция наполняет выпадающие списки названиями валют
@@ -272,19 +288,7 @@ namespace MoneyMorph
             BackColor = backColor;
             ForeColor = textColor;
 
-            foreach (Control control in Controls)
-            {
-                control.ForeColor = textColor;
-                if (control is Panel or DataGridView)
-                {
-                    control.BackColor = backColor;
-                }
-                else if (control is Button button)
-                {
-                    button.BackColor = _isDarkMode ? Color.FromArgb(64, 64, 64) : Color.LightGray;
-                    button.ForeColor = textColor;
-                }
-            }
+            ApplyThemeRecursive(this, backColor, textColor);
 
             _ratesGrid.BackgroundColor = backColor;
             _ratesGrid.DefaultCellStyle.BackColor = backColor;
@@ -299,6 +303,37 @@ namespace MoneyMorph
             _ratesGrid.AlternatingRowsDefaultCellStyle.BackColor = _isDarkMode ? Color.FromArgb(45, 45, 45) : Color.FromArgb(245, 245, 245);
 
             _answerLabel.ForeColor = _isDarkMode ? Color.LightGreen : Color.DarkGreen;
+        }
+
+        // Эта служебная функция красит элементы управления и их потомков под выбранную тему
+        private void ApplyThemeRecursive(Control parent, Color backColor, Color textColor)
+        {
+            foreach (Control control in parent.Controls)
+            {
+                control.ForeColor = textColor;
+
+                switch (control)
+                {
+                    case Button button:
+                        button.BackColor = _isDarkMode ? Color.FromArgb(64, 64, 64) : Color.LightGray;
+                        button.ForeColor = textColor;
+                        break;
+                    case Panel or GroupBox:
+                        control.BackColor = backColor;
+                        break;
+                    case DataGridView:
+                        control.BackColor = backColor;
+                        break;
+                    default:
+                        control.BackColor = backColor;
+                        break;
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeRecursive(control, backColor, textColor);
+                }
+            }
         }
     }
 }
