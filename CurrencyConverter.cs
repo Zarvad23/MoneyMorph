@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace MoneyMorph
 {
@@ -25,7 +28,11 @@ namespace MoneyMorph
     {
         // Здесь мы храним все валюты в обычном списке для простоты понимания
         private readonly List<CurrencyInfo> _allCurrencies;
-        private readonly Random _random;
+        private static readonly HttpClient _httpClient = new HttpClient();
+        private const string ApiUrl = "https://open.er-api.com/v6/latest/USD";
+
+        // Здесь мы запоминаем момент успешного обновления, чтобы показать его пользователю
+        public DateTime LastSuccessfulUpdate { get; private set; }
 
         // Этот конструктор наполняет список валют предустановленными значениями
         public CurrencyConverter()
@@ -41,9 +48,14 @@ namespace MoneyMorph
                 new CurrencyInfo("CHF", 1.12m),
                 new CurrencyInfo("CAD", 0.73m),
                 new CurrencyInfo("AUD", 0.67m),
-                new CurrencyInfo("TRY", 0.031m)
+                new CurrencyInfo("TRY", 0.031m),
+                new CurrencyInfo("SEK", 0.095m),
+                new CurrencyInfo("NOK", 0.094m),
+                new CurrencyInfo("PLN", 0.25m),
+                new CurrencyInfo("INR", 0.012m),
+                new CurrencyInfo("BRL", 0.20m),
+                new CurrencyInfo("ZAR", 0.054m)
             };
-            _random = new Random();
         }
 
         // Эта функция возвращает список кодов всех доступных валют
@@ -100,25 +112,62 @@ namespace MoneyMorph
             return copy;
         }
 
-        // Эта функция слегка меняет курсы валют, имитируя живое обновление
-        public void UpdateRatesRandomly()
+        // Эта функция обращается к бесплатному API и обновляет курсы в списке
+        public async Task<bool> UpdateRatesFromInternetAsync()
         {
-            foreach (CurrencyInfo info in _allCurrencies)
+            try
             {
-                if (string.Equals(info.Code, "USD", StringComparison.OrdinalIgnoreCase))
+                using HttpResponseMessage response = await _httpClient.GetAsync(ApiUrl);
+                if (!response.IsSuccessStatusCode)
                 {
-                    continue;
+                    return false;
                 }
 
-                decimal changePercent = (decimal)_random.NextDouble() * 0.04m - 0.02m;
-                decimal newPrice = info.PriceInUsd + info.PriceInUsd * changePercent;
+                string json = await response.Content.ReadAsStringAsync();
+                using JsonDocument document = JsonDocument.Parse(json);
 
-                if (newPrice <= 0)
+                if (!document.RootElement.TryGetProperty("result", out JsonElement resultElement))
                 {
-                    newPrice = info.PriceInUsd;
+                    return false;
                 }
 
-                info.PriceInUsd = decimal.Round(newPrice, 4);
+                string? resultText = resultElement.GetString();
+                if (!string.Equals(resultText, "success", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                if (!document.RootElement.TryGetProperty("rates", out JsonElement ratesElement))
+                {
+                    return false;
+                }
+
+                foreach (CurrencyInfo info in _allCurrencies)
+                {
+                    if (string.Equals(info.Code, "USD", StringComparison.OrdinalIgnoreCase))
+                    {
+                        info.PriceInUsd = 1m;
+                        continue;
+                    }
+
+                    if (ratesElement.TryGetProperty(info.Code, out JsonElement rateNode))
+                    {
+                        double rateToCurrency = rateNode.GetDouble();
+                        if (rateToCurrency > 0)
+                        {
+                            decimal safeRate = Convert.ToDecimal(rateToCurrency);
+                            decimal newPrice = 1m / safeRate;
+                            info.PriceInUsd = decimal.Round(newPrice, 6, MidpointRounding.AwayFromZero);
+                        }
+                    }
+                }
+
+                LastSuccessfulUpdate = DateTime.Now;
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
     }

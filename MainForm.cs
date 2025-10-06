@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MoneyMorph
@@ -14,6 +15,12 @@ namespace MoneyMorph
         private Label _answerLabel = null!;
         private NumericUpDown _decimalsBox = null!;
         private DataGridView _ratesGrid = null!;
+        private Label _connectionLabel = null!;
+        private Label _lastUpdateLabel = null!;
+        private Button _updateRatesButton = null!;
+        private Timer _autoUpdateTimer = null!;
+        private bool _isUpdatingRates;
+        private bool _connectionOnline;
         private bool _isDarkMode;
 
         // Этот конструктор создаёт форму и настраивает все элементы
@@ -24,6 +31,7 @@ namespace MoneyMorph
             LoadCurrencies();
             RefreshRatesTable();
             ApplyTheme();
+            Load += MainForm_Load;
         }
 
         // Эта функция вручную добавляет на форму все элементы управления
@@ -135,14 +143,14 @@ namespace MoneyMorph
             swapButton.Click += SwapButton_Click;
             inputPanel.Controls.Add(swapButton);
 
-            Button updateRatesButton = new Button
+            _updateRatesButton = new Button
             {
                 Text = "Обновить курсы",
                 Location = new Point(0, 250),
                 Width = 120
             };
-            updateRatesButton.Click += UpdateRatesButton_Click;
-            inputPanel.Controls.Add(updateRatesButton);
+            _updateRatesButton.Click += UpdateRatesButton_Click;
+            inputPanel.Controls.Add(_updateRatesButton);
 
             Button themeButton = new Button
             {
@@ -152,6 +160,22 @@ namespace MoneyMorph
             };
             themeButton.Click += ThemeButton_Click;
             inputPanel.Controls.Add(themeButton);
+
+            _connectionLabel = new Label
+            {
+                Text = "Связь: нет данных",
+                AutoSize = true,
+                Location = new Point(0, 290)
+            };
+            inputPanel.Controls.Add(_connectionLabel);
+
+            _lastUpdateLabel = new Label
+            {
+                Text = "Последнее обновление: нет",
+                AutoSize = true,
+                Location = new Point(0, 310)
+            };
+            inputPanel.Controls.Add(_lastUpdateLabel);
 
             _answerLabel = new Label
             {
@@ -188,6 +212,20 @@ namespace MoneyMorph
             _ratesGrid.Columns.Add("Code", "Код валюты");
             _ratesGrid.Columns.Add("Usd", "Цена за 1 единицу (USD)");
             ratesGroup.Controls.Add(_ratesGrid);
+
+            // Этот таймер автоматически запрашивает курсы с заданным интервалом
+            _autoUpdateTimer = new Timer
+            {
+                Interval = 4000
+            };
+            _autoUpdateTimer.Tick += AutoUpdateTimer_Tick;
+        }
+
+        // Эта функция запускается при загрузке формы и сразу пытается обновить данные из интернета
+        private async void MainForm_Load(object? sender, EventArgs e)
+        {
+            await TryUpdateRatesAsync(false);
+            _autoUpdateTimer.Start();
         }
 
         // Эта функция наполняет выпадающие списки названиями валют
@@ -264,12 +302,92 @@ namespace MoneyMorph
             _toBox.SelectedItem = temp;
         }
 
-        // Эта функция имитирует обновление курсов и сразу перерисовывает таблицу
-        private void UpdateRatesButton_Click(object? sender, EventArgs e)
+        // Эта функция вручную запрашивает свежие курсы и показывает сообщение пользователю
+        private async void UpdateRatesButton_Click(object? sender, EventArgs e)
         {
-            _converter.UpdateRatesRandomly();
-            RefreshRatesTable();
-            _answerLabel.Text = "Курсы обновлены, можно пересчитать сумму";
+            await TryUpdateRatesAsync(true);
+        }
+
+        // Эта функция запускает автоматическое обновление по таймеру
+        private async void AutoUpdateTimer_Tick(object? sender, EventArgs e)
+        {
+            await TryUpdateRatesAsync(false);
+        }
+
+        // Эта функция аккуратно обращается к конвертеру и обновляет курсы из сети
+        private async Task TryUpdateRatesAsync(bool showMessage)
+        {
+            if (_isUpdatingRates)
+            {
+                return;
+            }
+
+            _isUpdatingRates = true;
+            _updateRatesButton.Enabled = false;
+
+            try
+            {
+                bool success = await _converter.UpdateRatesFromInternetAsync();
+
+                if (success)
+                {
+                    RefreshRatesTable();
+                    _connectionOnline = true;
+                    UpdateConnectionTexts();
+
+                    if (showMessage)
+                    {
+                        _answerLabel.Text = "Курсы обновлены по данным сервера";
+                    }
+                }
+                else
+                {
+                    _connectionOnline = false;
+                    UpdateConnectionTexts();
+
+                    if (showMessage)
+                    {
+                        MessageBox.Show("Не получилось получить данные. Показываются сохранённые курсы.");
+                    }
+                }
+            }
+            finally
+            {
+                _updateRatesButton.Enabled = true;
+                _isUpdatingRates = false;
+            }
+        }
+
+        // Эта функция обновляет подписи о связи и времени последнего ответа
+        private void UpdateConnectionTexts()
+        {
+            if (_connectionOnline)
+            {
+                _connectionLabel.Text = $"Связь: есть (обновлено {_converter.LastSuccessfulUpdate:HH:mm:ss})";
+                _connectionLabel.ForeColor = Color.ForestGreen;
+            }
+            else
+            {
+                if (_converter.LastSuccessfulUpdate == default)
+                {
+                    _connectionLabel.Text = "Связь: нет (показываются курсы по умолчанию)";
+                }
+                else
+                {
+                    _connectionLabel.Text = $"Связь: нет (последние данные {_converter.LastSuccessfulUpdate:HH:mm:ss})";
+                }
+
+                _connectionLabel.ForeColor = Color.DarkRed;
+            }
+
+            if (_converter.LastSuccessfulUpdate == default)
+            {
+                _lastUpdateLabel.Text = "Последнее обновление: нет";
+            }
+            else
+            {
+                _lastUpdateLabel.Text = $"Последнее обновление: {_converter.LastSuccessfulUpdate:dd.MM.yyyy HH:mm:ss}";
+            }
         }
 
         // Эта функция по кнопке меняет оформление формы на светлое или тёмное
@@ -303,6 +421,7 @@ namespace MoneyMorph
             _ratesGrid.AlternatingRowsDefaultCellStyle.BackColor = _isDarkMode ? Color.FromArgb(45, 45, 45) : Color.FromArgb(245, 245, 245);
 
             _answerLabel.ForeColor = _isDarkMode ? Color.LightGreen : Color.DarkGreen;
+            UpdateConnectionTexts();
         }
 
         // Эта служебная функция красит элементы управления и их потомков под выбранную тему
