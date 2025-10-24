@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+<Project Sdk="Microsoft.NET.Sdk"> <!-- Стандартный проект с набором инструментов .NET -->
+  <PropertyGroup> <!-- Тег с опциями проекта -->
+    <OutputType>WinExe</OutputType> <!-- Окно приложения без консоли -->
+    <TargetFramework>net9.0-windows</TargetFramework> <!-- Должно работать на .NET9 строго на Windows -->
+    <UseWindowsForms>true</UseWindowsForms> <!-- Использовать бибилотеки для работы с формами -->
+    <Nullable>enable</Nullable> <!-- Следить чтобы нигде не было null -->
+    <ImplicitUsings>enable</ImplicitUsings> <!-- Автоподключение часто используемых библиотек -->
   </PropertyGroup>
 </Project>
