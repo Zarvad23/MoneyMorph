@@ -1,5 +1,7 @@
 using System; // позволяет использовать базовые классы .NET
 using System.Drawing; // позволяет работать с графикой и цветами
+using System.Drawing.Drawing2D; // позволяет рисовать сложные градиенты и эффекты
+using System.Linq; // позволяет удобно работать с коллекциями
 using System.Threading.Tasks; // позволяет использовать асинхронное программирование
 using System.Windows.Forms; // позволяет создавать Windows Forms приложения
 
@@ -22,6 +24,25 @@ namespace MoneyMorph
         private bool _isUpdatingRates; // Флаг процесса обновления курсов
         private bool _connectionOnline; // Флаг наличия подключения
         private bool _isDarkMode; // Флаг тёмной темы оформления
+        private NeonPanel _headerPanel = null!; // Неоновая панель с заголовком
+        private ListBox _historyList = null!; // История конверсий
+        private ListView _insightsView = null!; // Таблица с инсайтами по валютам
+        private ListView _quickBurstView = null!; // Таблица с быстрыми конверсиями
+        private FlowLayoutPanel _vibePanel = null!; // Панель с динамичными подсказками
+        private Label _vibeLabel = null!; // Метка с мотивирующим текстом
+        private System.Windows.Forms.Timer _neonTimer = null!; // Таймер анимации неоновой панели
+        private readonly Random _random = new Random(); // Генератор случайностей для подсказок
+        private readonly string[] _vibeLibrary = // Набор вдохновляющих сообщений
+        {
+            "Зарядите кошелёк новыми курсами!",
+            "Каждый клик — как удар по басу валютного трека.",
+            "Команда MoneyMorph держит космический ритм рынка.",
+            "Хватайте лучший курс, пока он сияет!",
+            "Играем на опережение — валютный диджей доволен.",
+            "Чем больше конверсий, тем ярче неон на панели.",
+            "Включаем режим сверхскорости: курс уже готов.",
+            "Пусть числа танцуют — вы управляете битом."
+        };
 
         // Инициализирует форму и все её компоненты
         public MainForm() // Конструктор главной формы
@@ -31,225 +52,428 @@ namespace MoneyMorph
             LoadCurrencies(); // Загружает список валют
             RefreshRatesTable(); // Заполняет таблицу курсов
             ApplyTheme(); // Применяет тему оформления
+            UpdateVibeStatus("🎚 Добро пожаловать в MoneyMorph Neon Lab!"); // Устанавливает стартовый слоган
             Load += MainForm_Load; // Подписывается на событие загрузки формы
+            FormClosed += MainForm_FormClosed; // Останавливает таймеры при закрытии окна
         }
 
         // Создаёт и настраивает все элементы управления на форме
+
+
         private void BuildLayout()
         {
-            Text = "MoneyMorph - учебный пример"; // Устанавливает заголовок окна
+            Text = "MoneyMorph Neon Lab"; // Новый яркий заголовок окна
             StartPosition = FormStartPosition.CenterScreen; // Центрирует окно на экране
-            MinimumSize = new Size(820, 480); // Задаёт минимальный размер окна чтобы элементы не сжимались слишком сильно
+            MinimumSize = new Size(940, 580); // Увеличивает минимальный размер для комфортного размещения элементов
 
-            // Создаёт основной контейнер с двумя колонками
-            TableLayoutPanel mainLayout = new TableLayoutPanel
+            TableLayoutPanel rootLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill, // Заполняет всю форму
-                ColumnCount = 2, // Устанавливает две колонки
-                RowCount = 2, // Устанавливает две строки
-                Padding = new Padding(15) // Добавляет отступы
+                ColumnCount = 1, // Одна колонка
+                RowCount = 3, // Три строки: шапка, содержимое и нижняя панель
+                Padding = new Padding(0) // Без дополнительных внешних отступов
             };
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45f)); // Левая колонка 45%
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55f)); // Правая колонка 55%
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // Первая строка занимает всё доступное пространство
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Вторая строка подстраивается под содержимое
-            Controls.Add(mainLayout); // Добавляет контейнер на форму
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Высота шапки подстраивается под содержимое
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // Основное содержимое занимает всё оставшееся место
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Нижняя панель авторазмера
+            Controls.Add(rootLayout); // Добавляет контейнер на форму
 
-            // Создаёт панель с элементами ввода данных
+            // Создаёт сияющую неоновую панель с заголовком
+            _headerPanel = new NeonPanel
+            {
+                Dock = DockStyle.Fill, // Заполняет всю ширину
+                Padding = new Padding(28, 20, 28, 20), // Добавляет внутренние отступы
+                Margin = new Padding(0) // Без внешних отступов
+            };
+
+            TableLayoutPanel headerContent = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill, // Заполняет панель
+                ColumnCount = 1,
+                RowCount = 3,
+                BackColor = Color.Transparent
+            };
+            headerContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            headerContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            headerContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            Label titleLabel = new Label
+            {
+                Text = "MoneyMorph Neon Lab", // Основной заголовок
+                AutoSize = true,
+                Font = new Font("Segoe UI", 22f, FontStyle.Bold), // Использует современный шрифт
+                ForeColor = Color.White,
+                BackColor = Color.Transparent
+            };
+            headerContent.Controls.Add(titleLabel, 0, 0);
+
+            Label subtitleLabel = new Label
+            {
+                Text = "Конвертер, который играет по правилам неона", // Подзаголовок
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11.5f, FontStyle.Regular),
+                ForeColor = Color.WhiteSmoke,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 6, 0, 0)
+            };
+            headerContent.Controls.Add(subtitleLabel, 0, 1);
+
+            FlowLayoutPanel badgePanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 12, 0, 0)
+            };
+            badgePanel.Controls.Add(CreateBadge("⚡ Живые курсы в пару кликов"));
+            badgePanel.Controls.Add(CreateBadge("🎛 История обменов под вашим контролем"));
+            badgePanel.Controls.Add(CreateBadge("🌌 Аналитика, которая светится идеями"));
+            headerContent.Controls.Add(badgePanel, 0, 2);
+
+            _headerPanel.Controls.Add(headerContent);
+            rootLayout.Controls.Add(_headerPanel, 0, 0);
+
+            // Основной блок с вводом данных и аналитикой
+            TableLayoutPanel contentLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(24, 22, 24, 12)
+            };
+            contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 47f));
+            contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 53f));
+            rootLayout.Controls.Add(contentLayout, 0, 1);
+
+            // Левая колонка: ввод данных и история
+            TableLayoutPanel leftColumn = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(0, 0, 16, 0)
+            };
+            leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            leftColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            contentLayout.Controls.Add(leftColumn, 0, 0);
+
             TableLayoutPanel inputLayout = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill, // Заполняет свою область
-                ColumnCount = 2, // Устанавливает две колонки
-                RowCount = 8, // Устанавливает восемь строк
-                AutoSize = true, // Включает автоматический размер
-                AutoSizeMode = AutoSizeMode.GrowAndShrink, // Режим автоматического изменения размера
-                Padding = new Padding(0, 0, 10, 0) // Добавляет отступ справа
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 8,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
-            inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // Левая колонка 50%
-            inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // Правая колонка 50%
-            for (int i = 0; i < 8; i++) // Перебирает все строки
+            inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48f));
+            inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52f));
+            for (int i = 0; i < 8; i++)
             {
-                inputLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Устанавливает автоматическую высоту строки
+                inputLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
-            mainLayout.Controls.Add(inputLayout, 0, 0); // Добавляет панель в левую верхнюю ячейку
+            leftColumn.Controls.Add(inputLayout, 0, 0);
 
-            // Создаёт подсказку для пользователя
             Label helpLabel = new Label
             {
-                Text = "Введите сумму и выберите направление обмена", // Устанавливает текст подсказки
-                AutoSize = true // Включает автоматический размер
+                Text = "Введите сумму и настройте направление обмена", // Подсказка
+                AutoSize = true
             };
-            inputLayout.Controls.Add(helpLabel, 0, 0); // Добавляет метку в первую ячейку
-            inputLayout.SetColumnSpan(helpLabel, 2); // Объединяет две колонки
+            inputLayout.Controls.Add(helpLabel, 0, 0);
+            inputLayout.SetColumnSpan(helpLabel, 2);
 
-            // Создаёт метку для выбора исходной валюты
             Label fromLabel = new Label
             {
-                Text = "Исходная валюта:", // Устанавливает текст метки
-                AutoSize = true // Включает автоматический размер
+                Text = "Исходная валюта:",
+                AutoSize = true,
+                Margin = new Padding(0, 6, 0, 6)
             };
-            inputLayout.Controls.Add(fromLabel, 0, 1); // Добавляет метку во вторую строку
+            inputLayout.Controls.Add(fromLabel, 0, 1);
 
             _fromBox = new ComboBox
             {
-                Dock = DockStyle.Fill, // Заполняет ячейку
-                DropDownStyle = ComboBoxStyle.DropDownList // Запрещает ввод текста вручную
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
-            inputLayout.Controls.Add(_fromBox, 1, 1); // Добавляет выпадающий список рядом с меткой
+            inputLayout.Controls.Add(_fromBox, 1, 1);
 
-            // Создаёт метку для выбора целевой валюты
             Label toLabel = new Label
             {
-                Text = "Нужная валюта:", // Устанавливает текст метки
-                AutoSize = true // Включает автоматический размер
+                Text = "Нужная валюта:",
+                AutoSize = true,
+                Margin = new Padding(0, 6, 0, 6)
             };
-            inputLayout.Controls.Add(toLabel, 0, 2); // Добавляет метку в третью строку
+            inputLayout.Controls.Add(toLabel, 0, 2);
 
             _toBox = new ComboBox
             {
-                Dock = DockStyle.Fill, // Заполняет ячейку
-                DropDownStyle = ComboBoxStyle.DropDownList // Запрещает ввод текста вручную
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
-            inputLayout.Controls.Add(_toBox, 1, 2); // Добавляет выпадающий список рядом с меткой
+            inputLayout.Controls.Add(_toBox, 1, 2);
 
-            // Создаёт метку для поля ввода суммы
             Label amountLabel = new Label
             {
-                Text = "Сумма:", // Устанавливает текст метки
-                AutoSize = true // Включает автоматический размер
+                Text = "Сумма:",
+                AutoSize = true,
+                Margin = new Padding(0, 6, 0, 6)
             };
-            inputLayout.Controls.Add(amountLabel, 0, 3); // Добавляет метку в четвёртую строку
+            inputLayout.Controls.Add(amountLabel, 0, 3);
 
             _amountBox = new TextBox
             {
-                Dock = DockStyle.Fill // Заполняет ячейку
+                Dock = DockStyle.Fill,
+                PlaceholderText = "Например, 125.50" // Добавляет подсказку в поле
             };
-            inputLayout.Controls.Add(_amountBox, 1, 3); // Добавляет текстовое поле рядом с меткой
+            inputLayout.Controls.Add(_amountBox, 1, 3);
 
-            // Создаёт метку для настройки количества знаков после запятой
             Label decimalsLabel = new Label
             {
-                Text = "Округление (знаков):", // Устанавливает текст метки
-                AutoSize = true // Включает автоматический размер
+                Text = "Округление (знаков):",
+                AutoSize = true,
+                Margin = new Padding(0, 6, 0, 6)
             };
-            inputLayout.Controls.Add(decimalsLabel, 0, 4); // Добавляет метку в пятую строку
+            inputLayout.Controls.Add(decimalsLabel, 0, 4);
 
             _decimalsBox = new NumericUpDown
             {
-                Dock = DockStyle.Left, // Выравнивает по левому краю
-                Minimum = 0, // Минимальное значение
-                Maximum = 6, // Максимальное значение
-                Value = 2, // Начальное значение
-                Width = 80 // Ширина элемента
+                Dock = DockStyle.Left,
+                Minimum = 0,
+                Maximum = 6,
+                Value = 2,
+                Width = 90
             };
-            inputLayout.Controls.Add(_decimalsBox, 1, 4); // Добавляет счётчик рядом с меткой
+            inputLayout.Controls.Add(_decimalsBox, 1, 4);
 
-            // Создаёт панель с кнопками управления
             FlowLayoutPanel buttonPanel = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill, // Заполняет ячейку
-                FlowDirection = FlowDirection.LeftToRight, // Горизонтальное размещение
-                AutoSize = true // Включает автоматический размер
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = true,
+                Margin = new Padding(0, 10, 0, 0)
             };
-            inputLayout.Controls.Add(buttonPanel, 0, 5); // Добавляет панель в шестую строку
-            inputLayout.SetColumnSpan(buttonPanel, 2); // Объединяет две колонки
+            inputLayout.Controls.Add(buttonPanel, 0, 5);
+            inputLayout.SetColumnSpan(buttonPanel, 2);
 
             Button convertButton = new Button
             {
-                Text = "Посчитать", // Текст кнопки
-                AutoSize = true // Включает автоматический размер
+                Text = "Посчитать",
+                AutoSize = true,
+                Padding = new Padding(14, 6, 14, 6)
             };
-            convertButton.Click += ConvertButton_Click; // Подписывается на событие нажатия
-            buttonPanel.Controls.Add(convertButton); // Добавляет кнопку на панель
+            convertButton.Click += ConvertButton_Click;
+            buttonPanel.Controls.Add(convertButton);
 
             Button swapButton = new Button
             {
-                Text = "Поменять", // Текст кнопки
-                AutoSize = true // Включает автоматический размер
+                Text = "Поменять",
+                AutoSize = true,
+                Padding = new Padding(14, 6, 14, 6)
             };
-            swapButton.Click += SwapButton_Click; // Подписывается на событие нажатия
-            buttonPanel.Controls.Add(swapButton); // Добавляет кнопку на панель
+            swapButton.Click += SwapButton_Click;
+            buttonPanel.Controls.Add(swapButton);
 
             _updateRatesButton = new Button
             {
-                Text = "Обновить курсы", // Текст кнопки
-                AutoSize = true // Включает автоматический размер
+                Text = "Обновить курсы",
+                AutoSize = true,
+                Padding = new Padding(14, 6, 14, 6)
             };
-            _updateRatesButton.Click += UpdateRatesButton_Click; // Подписывается на событие нажатия
-            buttonPanel.Controls.Add(_updateRatesButton); // Добавляет кнопку на панель
+            _updateRatesButton.Click += UpdateRatesButton_Click;
+            buttonPanel.Controls.Add(_updateRatesButton);
 
             Button themeButton = new Button
             {
-                Text = "Смена темы", // Текст кнопки
-                AutoSize = true // Включает автоматический размер
+                Text = "Смена темы",
+                AutoSize = true,
+                Padding = new Padding(14, 6, 14, 6)
             };
-            themeButton.Click += ThemeButton_Click; // Подписывается на событие нажатия
-            buttonPanel.Controls.Add(themeButton); // Добавляет кнопку на панель
+            themeButton.Click += ThemeButton_Click;
+            buttonPanel.Controls.Add(themeButton);
 
-            // Создаёт индикатор состояния подключения
             _connectionLabel = new Label
             {
-                Text = "Связь: нет данных", // Начальный текст индикатора
-                AutoSize = true // Включает автоматический размер
+                Text = "Связь: нет данных",
+                AutoSize = true,
+                Margin = new Padding(0, 12, 0, 0)
             };
-            inputLayout.Controls.Add(_connectionLabel, 0, 6); // Добавляет метку в седьмую строку
-            inputLayout.SetColumnSpan(_connectionLabel, 2); // Объединяет две колонки
+            inputLayout.Controls.Add(_connectionLabel, 0, 6);
+            inputLayout.SetColumnSpan(_connectionLabel, 2);
 
-            // Создаёт метку времени последнего обновления
             _lastUpdateLabel = new Label
             {
-                Text = "Последнее обновление: нет", // Начальный текст метки
-                AutoSize = true // Включает автоматический размер
+                Text = "Последнее обновление: нет",
+                AutoSize = true,
+                Margin = new Padding(0, 4, 0, 0)
             };
-            inputLayout.Controls.Add(_lastUpdateLabel, 0, 7); // Добавляет метку в восьмую строку
-            inputLayout.SetColumnSpan(_lastUpdateLabel, 2); // Объединяет две колонки
+            inputLayout.Controls.Add(_lastUpdateLabel, 0, 7);
+            inputLayout.SetColumnSpan(_lastUpdateLabel, 2);
 
-            // Создаёт группу с таблицей курсов валют
+            GroupBox historyGroup = new GroupBox
+            {
+                Text = "История неоновых обменов",
+                Dock = DockStyle.Fill,
+                Padding = new Padding(14, 16, 14, 14)
+            };
+            leftColumn.Controls.Add(historyGroup, 0, 1);
+
+            _historyList = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                IntegralHeight = false,
+                DrawMode = DrawMode.OwnerDrawFixed,
+                ItemHeight = 34
+            };
+            _historyList.DrawItem += HistoryList_DrawItem;
+            historyGroup.Controls.Add(_historyList);
+
+            // Правая колонка: таблица курсов и аналитика
+            TableLayoutPanel rightColumn = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            rightColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 58f));
+            rightColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 42f));
+            contentLayout.Controls.Add(rightColumn, 1, 0);
+
             GroupBox ratesGroup = new GroupBox
             {
-                Text = "Текущие курсы", // Заголовок группы
-                Dock = DockStyle.Fill // Заполняет свою область
+                Text = "Текущие курсы",
+                Dock = DockStyle.Fill,
+                Padding = new Padding(14, 16, 14, 14)
             };
-            mainLayout.Controls.Add(ratesGroup, 1, 0); // Добавляет группу в правую верхнюю ячейку
+            rightColumn.Controls.Add(ratesGroup, 0, 0);
 
             _ratesGrid = new DataGridView
             {
-                Dock = DockStyle.Fill, // Заполняет всю группу
-                ReadOnly = true, // Только для чтения
-                AllowUserToAddRows = false, // Запрещает добавление строк
-                AllowUserToDeleteRows = false, // Запрещает удаление строк
-                AllowUserToResizeColumns = false, // Запрещает изменение ширины колонок
-                AllowUserToResizeRows = false, // Запрещает изменение высоты строк
-                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize, // Автоматическая высота заголовков
-                RowHeadersVisible = false, // Скрывает заголовки строк
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect, // Выделение целой строки
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill // Колонки заполняют всю ширину
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                AllowUserToResizeColumns = false,
+                AllowUserToResizeRows = false,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                BorderStyle = BorderStyle.None
             };
-            _ratesGrid.Columns.Add("Code", "Код валюты"); // Добавляет колонку для кода валюты
-            _ratesGrid.Columns.Add("Usd", "Цена за 1 единицу (USD)"); // Добавляет колонку для курса
-            ratesGroup.Controls.Add(_ratesGrid); // Добавляет таблицу в группу
+            _ratesGrid.Columns.Add("Code", "Код валюты");
+            _ratesGrid.Columns.Add("Usd", "Цена за 1 единицу (USD)");
+            ratesGroup.Controls.Add(_ratesGrid);
 
-            // Создаёт метку для отображения результата конвертации
+            TableLayoutPanel analyticsLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            analyticsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 55f));
+            analyticsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 45f));
+            rightColumn.Controls.Add(analyticsLayout, 0, 1);
+
+            GroupBox insightsGroup = new GroupBox
+            {
+                Text = "Галактические инсайты",
+                Dock = DockStyle.Fill,
+                Padding = new Padding(14, 16, 14, 14)
+            };
+            analyticsLayout.Controls.Add(insightsGroup, 0, 0);
+
+            _insightsView = new ListView
+            {
+                Dock = DockStyle.Fill,
+                View = View.Details,
+                FullRowSelect = true,
+                MultiSelect = false,
+                HideSelection = false,
+                BorderStyle = BorderStyle.None,
+                HeaderStyle = ColumnHeaderStyle.Nonclickable,
+                ShowGroups = true
+            };
+            _insightsView.Columns.Add("Валюта", 120);
+            _insightsView.Columns.Add("Цена (USD)", 110);
+            _insightsView.Columns.Add("Энергия", 160);
+            _insightsView.SizeChanged += (_, _) => AdjustListViewColumns(_insightsView, 0.36f, 0.26f, 0.38f);
+            insightsGroup.Controls.Add(_insightsView);
+
+            GroupBox quickGroup = new GroupBox
+            {
+                Text = "Неоновый экспресс-конверт",
+                Dock = DockStyle.Fill,
+                Padding = new Padding(14, 16, 14, 14)
+            };
+            analyticsLayout.Controls.Add(quickGroup, 0, 1);
+
+            _quickBurstView = new ListView
+            {
+                Dock = DockStyle.Fill,
+                View = View.Details,
+                FullRowSelect = true,
+                MultiSelect = false,
+                HideSelection = false,
+                BorderStyle = BorderStyle.None,
+                HeaderStyle = ColumnHeaderStyle.Nonclickable,
+                ShowGroups = true
+            };
+            _quickBurstView.Columns.Add("Валюта", 110);
+            _quickBurstView.Columns.Add("Результат", 140);
+            _quickBurstView.Columns.Add("Вибрации", 150);
+            _quickBurstView.SizeChanged += (_, _) => AdjustListViewColumns(_quickBurstView, 0.32f, 0.38f, 0.30f);
+            quickGroup.Controls.Add(_quickBurstView);
+
+            // Нижняя панель с вибами и результатом
+            _vibePanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                Padding = new Padding(28, 10, 28, 16)
+            };
+            rootLayout.Controls.Add(_vibePanel, 0, 2);
+
             _answerLabel = new Label
             {
-                Text = "Результат появится ниже", // Начальный текст метки
-                AutoSize = true, // Включает автоматический размер
-                ForeColor = Color.DarkGreen, // Устанавливает цвет текста
-                Dock = DockStyle.Fill, // Заполняет ячейку
-                TextAlign = ContentAlignment.MiddleLeft, // Выравнивание текста по левому краю
-                Padding = new Padding(0, 10, 0, 0) // Добавляет отступ сверху
+                Text = "Результат появится после конвертации",
+                AutoSize = true,
+                Padding = new Padding(0, 4, 0, 0)
             };
-            mainLayout.Controls.Add(_answerLabel, 0, 1); // Добавляет метку в нижнюю строку
-            mainLayout.SetColumnSpan(_answerLabel, 2); // Объединяет две колонки
+            _vibePanel.Controls.Add(_answerLabel);
 
-            // Создаёт таймер для автоматического обновления курсов
+            _vibeLabel = new Label
+            {
+                Text = "Готовы зажечь валютный танцпол.",
+                AutoSize = true,
+                Margin = new Padding(18, 4, 0, 0),
+                Font = new Font("Segoe UI", 10f, FontStyle.Italic)
+            };
+            _vibePanel.Controls.Add(_vibeLabel);
+
+            AdjustListViewColumns(_insightsView, 0.36f, 0.26f, 0.38f); // Настраивает ширину колонок после создания
+            AdjustListViewColumns(_quickBurstView, 0.32f, 0.38f, 0.30f); // Настраивает ширину колонок в таблице экспресса
+
+            // Таймеры приложения
             _autoUpdateTimer = new System.Windows.Forms.Timer
             {
-                Interval = 4000 // Интервал в миллисекундах (4 секунды)
+                Interval = 4000
             };
-            _autoUpdateTimer.Tick += AutoUpdateTimer_Tick; // Подписывается на событие таймера
-        }
+            _autoUpdateTimer.Tick += AutoUpdateTimer_Tick;
 
+            _neonTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 120
+            };
+            _neonTimer.Tick += (_, _) => _headerPanel.AdvancePhase(0.018f);
+            _neonTimer.Start();
+        }
         // Обрабатывает событие загрузки формы
         private async void MainForm_Load(object? sender, EventArgs e) // sender это сама форма, e это аргументы события
         {
@@ -310,6 +534,9 @@ namespace MoneyMorph
             string amountText = amount.ToString("F2"); // Форматирует исходную сумму
             string resultText = result.ToString("F" + decimals); // Форматирует результат
             _answerLabel.Text = $"{amountText} {fromCode} = {resultText} {toCode}"; // Выводит результат в метку
+            AddHistoryItem(fromCode, toCode, amount, decimals, result); // Добавляет запись в историю
+            UpdateQuickBurst(fromCode, amount, decimals); // Показывает результаты экспресс-конвертаций
+            UpdateVibeStatus($"⚡ {fromCode} → {toCode} — энергия пересчёта доставлена!"); // Обновляет вдохновляющий текст
         }
 
         // Обновляет таблицу с текущими курсами валют
@@ -321,6 +548,7 @@ namespace MoneyMorph
             {
                 _ratesGrid.Rows.Add(info.Code, info.PriceInUsd.ToString("F4")); // Добавляет строку с кодом и курсом а F4 означает 4 знака после запятой
             }
+            UpdateInsights(); // Обновляет аналитический блок после перерисовки таблицы
         }
 
         // Обрабатывает нажатие кнопки обмена валют местами
@@ -363,6 +591,12 @@ namespace MoneyMorph
                     RefreshRatesTable(); // Обновляет таблицу с новыми курсами
                     _connectionOnline = true; // Устанавливает флаг наличия подключения
                     UpdateConnectionTexts(); // Обновляет текст индикаторов
+                    if (_fromBox.SelectedItem is string quickFrom && decimal.TryParse(_amountBox.Text, out decimal currentAmount) && currentAmount >= 0) // Проверяет возможность обновить экспресс панель
+                    {
+                        int decimals = (int)_decimalsBox.Value; // Берёт текущее значение округления
+                        UpdateQuickBurst(quickFrom, currentAmount, decimals); // Обновляет экспресс-конвертации с новыми курсами
+                    }
+                    UpdateVibeStatus("📡 Свежие курсы на палубе — проверяйте инсайты!"); // Сообщает об успешном обновлении
 
                     if (showMessage) // Проверяет необходимость показа сообщения
                     {
@@ -373,6 +607,7 @@ namespace MoneyMorph
                 {
                     _connectionOnline = false; // Сбрасывает флаг наличия подключения
                     UpdateConnectionTexts(); // Обновляет текст индикаторов
+                    UpdateVibeStatus("🚧 Не удалось связаться с сервером — играем по старым нотам."); // Показывает сообщение о проблеме
 
                     if (showMessage) // Проверяет необходимость показа сообщения
                     {
@@ -437,6 +672,18 @@ namespace MoneyMorph
 
             ApplyThemeRecursive(this, backColor, textColor); // Применяет тему рекурсивно ко всем дочерним элементам
 
+            Color analyticsBack = _isDarkMode ? Color.FromArgb(32, 34, 48) : Color.FromArgb(244, 246, 255); // Цвет фоновых панелей
+            Color historyBack = _isDarkMode ? Color.FromArgb(24, 25, 33) : Color.FromArgb(250, 250, 255); // Цвет списка истории
+            _historyList.BackColor = historyBack; // Устанавливает фон истории
+            _historyList.ForeColor = textColor; // Устанавливает цвет текста истории
+            _historyList.Invalidate(); // Перерисовывает элементы для применения цвета
+
+            StyleListView(_insightsView, analyticsBack, textColor); // Применяет цвета к таблице инсайтов
+            StyleListView(_quickBurstView, analyticsBack, textColor); // Применяет цвета к таблице экспресс-конвертаций
+
+            _vibePanel.BackColor = _isDarkMode ? Color.FromArgb(18, 20, 28) : Color.FromArgb(255, 255, 255); // Подкрашивает нижнюю панель
+            _vibeLabel.ForeColor = _isDarkMode ? Color.FromArgb(218, 222, 240) : Color.FromArgb(64, 64, 78); // Настраивает цвет текста вибов
+
             // Настраивает цветовую схему таблицы курсов
             _ratesGrid.BackgroundColor = backColor; // Устанавливает цвет фона таблицы
             _ratesGrid.DefaultCellStyle.BackColor = backColor; // Устанавливает цвет фона ячеек
@@ -459,6 +706,11 @@ namespace MoneyMorph
         {
             foreach (Control control in parent.Controls) // Перебирает все дочерние элементы
             {
+                if (control is NeonPanel) // Сохраняет неоновую панель без изменений
+                {
+                    continue;
+                }
+
                 control.ForeColor = textColor; // Устанавливает цвет текста элемента
 
                 switch (control) // Проверяет тип элемента управления
@@ -466,6 +718,14 @@ namespace MoneyMorph
                     case Button button: // Обрабатывает кнопки
                         button.BackColor = _isDarkMode ? Color.FromArgb(64, 64, 64) : Color.LightGray; // Устанавливает цвет фона кнопки
                         button.ForeColor = textColor; // Устанавливает цвет текста кнопки
+                        break;
+                    case ListView listView: // Обрабатывает списки
+                        listView.BackColor = backColor; // Устанавливает цвет фона
+                        listView.ForeColor = textColor; // Устанавливает цвет текста
+                        break;
+                    case ListBox listBox: // Обрабатывает списки истории
+                        listBox.BackColor = backColor; // Устанавливает цвет фона
+                        listBox.ForeColor = textColor; // Устанавливает цвет текста
                         break;
                     case Panel or GroupBox: // Обрабатывает панели и группы
                         control.BackColor = backColor; // Устанавливает цвет фона
@@ -483,6 +743,295 @@ namespace MoneyMorph
                     ApplyThemeRecursive(control, backColor, textColor); // Рекурсивно применяет тему к дочерним элементам
                 }
             }
+        }
+
+
+        private Control CreateBadge(string text)
+        {
+            Label badge = new Label
+            {
+                Text = text,
+                AutoSize = true,
+                Padding = new Padding(14, 6, 14, 6),
+                Margin = new Padding(0, 0, 12, 8),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(96, 0, 0, 0),
+                Font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Regular),
+                UseMnemonic = false,
+            };
+
+            void ApplyRoundedShape()
+            {
+                if (badge.Width <= 0 || badge.Height <= 0)
+                {
+                    return;
+                }
+
+                using GraphicsPath path = new GraphicsPath();
+                Rectangle rect = new Rectangle(Point.Empty, new Size(badge.Width - 1, badge.Height - 1));
+                int radius = 18;
+                int diameter = radius * 2;
+                path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+                path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+                path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+                path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+                path.CloseFigure();
+                badge.Region = new Region(path);
+            }
+
+            badge.Resize += (_, _) => ApplyRoundedShape();
+            badge.CreateControl();
+            ApplyRoundedShape();
+            return badge;
+        }
+
+        private void StyleListView(ListView view, Color backColor, Color textColor)
+        {
+            view.BackColor = backColor;
+            view.ForeColor = textColor;
+            view.BorderStyle = BorderStyle.None;
+            view.FullRowSelect = true;
+            view.HideSelection = false;
+            foreach (ListViewItem item in view.Items)
+            {
+                item.BackColor = backColor;
+                item.ForeColor = textColor;
+            }
+        }
+
+        private void HistoryList_DrawItem(object? sender, DrawItemEventArgs e)
+        {
+            e.DrawBackground();
+            if (e.Index < 0 || e.Index >= _historyList.Items.Count)
+            {
+                return;
+            }
+
+            string text = _historyList.Items[e.Index]?.ToString() ?? string.Empty;
+            Rectangle bounds = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + 4, Math.Max(0, e.Bounds.Width - 8), Math.Max(0, e.Bounds.Height - 8));
+
+            Color start = _isDarkMode ? Color.FromArgb(160, 78, 205, 196) : Color.FromArgb(170, 140, 220, 255);
+            Color end = _isDarkMode ? Color.FromArgb(160, 120, 160, 255) : Color.FromArgb(170, 255, 180, 215);
+            if (e.State.HasFlag(DrawItemState.Selected))
+            {
+                start = Color.FromArgb(200, start);
+                end = Color.FromArgb(200, end);
+            }
+
+            using LinearGradientBrush brush = new LinearGradientBrush(bounds, start, end, LinearGradientMode.Horizontal);
+            using GraphicsPath pathShape = new GraphicsPath();
+            pathShape.AddArc(bounds.X, bounds.Y, 24, 24, 180, 90);
+            pathShape.AddArc(bounds.Right - 24, bounds.Y, 24, 24, 270, 90);
+            pathShape.AddArc(bounds.Right - 24, bounds.Bottom - 24, 24, 24, 0, 90);
+            pathShape.AddArc(bounds.X, bounds.Bottom - 24, 24, 24, 90, 90);
+            pathShape.CloseFigure();
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.FillPath(brush, pathShape);
+
+            Color borderColor = _isDarkMode ? Color.FromArgb(120, 0, 0, 0) : Color.FromArgb(90, 255, 255, 255);
+            using Pen borderPen = new Pen(borderColor, 1.2f);
+            e.Graphics.DrawPath(borderPen, pathShape);
+
+            string prefix = e.Index switch
+            {
+                0 => "🔥",
+                1 => "🚀",
+                2 => "🎯",
+                _ => "🎧"
+            };
+
+            Rectangle textBounds = new Rectangle(bounds.X + 16, bounds.Y + 7, Math.Max(0, bounds.Width - 24), Math.Max(0, bounds.Height - 14));
+            using Font textFont = new Font("Segoe UI", 9.5f, FontStyle.Regular);
+            TextRenderer.DrawText(
+                e.Graphics,
+                $"{prefix} {text}",
+                textFont,
+                textBounds,
+                _isDarkMode ? Color.WhiteSmoke : Color.FromArgb(32, 32, 32),
+                TextFormatFlags.EndEllipsis);
+
+            e.DrawFocusRectangle();
+        }
+
+        private void AddHistoryItem(string fromCode, string toCode, decimal amount, int decimals, decimal result)
+        {
+            if (_historyList == null)
+            {
+                return;
+            }
+
+            string timestamp = DateTime.Now.ToString("HH:mm:ss");
+            string amountText = amount.ToString("F2");
+            string resultText = result.ToString("F" + Math.Clamp(decimals, 0, 6));
+            string entry = $"{timestamp} • {amountText} {fromCode} → {resultText} {toCode}";
+
+            _historyList.BeginUpdate();
+            _historyList.Items.Insert(0, entry);
+            while (_historyList.Items.Count > 10)
+            {
+                _historyList.Items.RemoveAt(_historyList.Items.Count - 1);
+            }
+            _historyList.EndUpdate();
+            _historyList.SelectedIndex = -1;
+            _historyList.Invalidate();
+        }
+
+        private void UpdateInsights()
+        {
+            if (_insightsView == null)
+            {
+                return;
+            }
+
+            CurrencyInfo[] currencies = _converter.GetAllCurrencies();
+            _insightsView.BeginUpdate();
+            _insightsView.Items.Clear();
+            _insightsView.Groups.Clear();
+
+            if (currencies.Length == 0)
+            {
+                _insightsView.EndUpdate();
+                return;
+            }
+
+            ListViewGroup topGroup = new ListViewGroup("Легенды курса", HorizontalAlignment.Left);
+            ListViewGroup chillGroup = new ListViewGroup("Дружелюбные цены", HorizontalAlignment.Left);
+            _insightsView.Groups.Add(topGroup);
+            _insightsView.Groups.Add(chillGroup);
+
+            CurrencyInfo[] top = currencies.OrderByDescending(c => c.PriceInUsd).Take(3).ToArray();
+            CurrencyInfo[] low = currencies.OrderBy(c => c.PriceInUsd).Take(3).ToArray();
+            decimal topAnchor = top.Length > 0 ? top[0].PriceInUsd : 1m;
+            decimal lowAnchor = low.Length > 0 ? low[0].PriceInUsd : 1m;
+
+            foreach (CurrencyInfo info in top)
+            {
+                ListViewItem item = new ListViewItem(info.Code, topGroup);
+                item.SubItems.Add(info.PriceInUsd.ToString("F4"));
+                item.SubItems.Add(BuildEnergyBar(info.PriceInUsd, topAnchor, false, "⚡"));
+                _insightsView.Items.Add(item);
+            }
+
+            foreach (CurrencyInfo info in low)
+            {
+                ListViewItem item = new ListViewItem(info.Code, chillGroup);
+                item.SubItems.Add(info.PriceInUsd.ToString("F4"));
+                item.SubItems.Add(BuildEnergyBar(info.PriceInUsd, lowAnchor, true, "💧"));
+                _insightsView.Items.Add(item);
+            }
+
+            _insightsView.EndUpdate();
+            AdjustListViewColumns(_insightsView, 0.36f, 0.26f, 0.38f);
+        }
+
+        private void UpdateQuickBurst(string fromCode, decimal amount, int decimals)
+        {
+            if (_quickBurstView == null)
+            {
+                return;
+            }
+
+            CurrencyInfo[] highlights = _converter
+                .GetAllCurrencies()
+                .Where(info => !string.Equals(info.Code, fromCode, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(info => info.PriceInUsd)
+                .Take(4)
+                .ToArray();
+
+            _quickBurstView.BeginUpdate();
+            _quickBurstView.Items.Clear();
+            _quickBurstView.Groups.Clear();
+
+            if (highlights.Length == 0)
+            {
+                _quickBurstView.EndUpdate();
+                return;
+            }
+
+            ListViewGroup group = new ListViewGroup("Неоновый залп", HorizontalAlignment.Left);
+            _quickBurstView.Groups.Add(group);
+            int safeDecimals = Math.Clamp(decimals, 0, 6);
+            decimal anchor = highlights[0].PriceInUsd;
+
+            foreach (CurrencyInfo target in highlights)
+            {
+                decimal converted = _converter.Convert(fromCode, target.Code, amount, safeDecimals);
+                string formatted = converted.ToString("F" + safeDecimals);
+                ListViewItem item = new ListViewItem(target.Code, group);
+                item.SubItems.Add(formatted);
+                item.SubItems.Add(BuildEnergyBar(target.PriceInUsd, anchor, false, "✨"));
+                _quickBurstView.Items.Add(item);
+            }
+
+            _quickBurstView.EndUpdate();
+            AdjustListViewColumns(_quickBurstView, 0.32f, 0.38f, 0.30f);
+        }
+
+        private void AdjustListViewColumns(ListView view, params float[] ratios)
+        {
+            if (view.Columns.Count != ratios.Length)
+            {
+                return;
+            }
+
+            int width = view.ClientSize.Width;
+            if (width <= 0)
+            {
+                width = view.Width;
+            }
+
+            for (int i = 0; i < ratios.Length; i++)
+            {
+                float ratio = Math.Clamp(ratios[i], 0f, 1f);
+                int columnWidth = Math.Max(60, (int)(width * ratio));
+                view.Columns[i].Width = columnWidth;
+            }
+        }
+
+        private string RepeatSymbol(string symbol, int count)
+        {
+            if (count <= 0)
+            {
+                return symbol;
+            }
+
+            return string.Concat(Enumerable.Repeat(symbol, count));
+        }
+
+        private string BuildEnergyBar(decimal value, decimal reference, bool invert, string symbol)
+        {
+            if (reference <= 0)
+            {
+                reference = 1m;
+            }
+
+            decimal ratio = invert ? reference / Math.Max(value, 0.000001m) : value / reference;
+            ratio = Math.Clamp(ratio, 0m, 4m);
+            int pulses = Math.Clamp((int)Math.Round((double)(ratio * 2.5m) + 1), 1, 7);
+            return RepeatSymbol(symbol, pulses);
+        }
+
+        private void UpdateVibeStatus(string leadMessage)
+        {
+            if (_vibeLabel == null)
+            {
+                return;
+            }
+
+            string vibe = string.IsNullOrWhiteSpace(leadMessage) ? string.Empty : leadMessage.Trim();
+            string tail = _vibeLibrary.Length > 0 ? _vibeLibrary[_random.Next(_vibeLibrary.Length)] : string.Empty;
+            if (!string.IsNullOrEmpty(tail))
+            {
+                vibe = string.IsNullOrEmpty(vibe) ? tail : $"{vibe} • {tail}";
+            }
+
+            _vibeLabel.Text = vibe;
+        }
+
+        private void MainForm_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            _autoUpdateTimer.Stop();
+            _neonTimer.Stop();
         }
     }
 }
