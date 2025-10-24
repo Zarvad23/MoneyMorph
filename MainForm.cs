@@ -349,6 +349,7 @@ namespace MoneyMorph
             {
                 _ratesGrid.Rows.Add(info.Code, info.PriceInUsd.ToString("F4", CultureInfo.InvariantCulture));
             }
+            UpdateInsights(); // Обновляет аналитический блок после перерисовки таблицы
         }
 
         private void SwapButton_Click(object? sender, EventArgs e)
