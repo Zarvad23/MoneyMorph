@@ -1,17 +1,16 @@
-using System; // позволяет использовать базовые классы .NET
-using System.Windows.Forms; // позволяет создавать Windows Forms приложения
+using System;
+using System.Windows.Forms;
 
-namespace MoneyMorph // Пространство имён для приложения MoneyMorph
+namespace MoneyMorph
 {
-    internal static class Program // Статический класс Program для управления запуском приложения
+    internal static class Program
     {
-        // Точка входа приложения
-        [STAThread] // Указываем что приложекние использует однопоточную модель, для Windows Forms
-        private static void Main() // Главный метод, с которого начинается выполнение программы
+        [STAThread]
+        private static void Main()
         {
-            Application.EnableVisualStyles(); // Включает визуальные стили для приложения
-            Application.SetCompatibleTextRenderingDefault(false); // Использует GDI+ для рендеринга текста, было бы true был бы просто GDI
-            Application.Run(new MainForm()); // Запускает главную форму приложения MainForm
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new MainForm());
         }
-    } 
+    }
 }
