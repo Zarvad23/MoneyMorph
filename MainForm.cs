@@ -487,7 +487,6 @@ namespace MoneyMorph
                         break;
                     case GroupBox:
                     case Panel:
-                    case FlowLayoutPanel:
                         child.BackColor = backColor;
                         child.ForeColor = textColor;
                         break;
@@ -524,11 +523,36 @@ namespace MoneyMorph
 
             _historyList.EndUpdate();
             _historyList.SelectedIndex = -1;
+            UpdateInsights();
         }
 
         private void MainForm_FormClosed(object? sender, FormClosedEventArgs e)
         {
             _autoUpdateTimer.Stop();
+        }
+
+        private void UpdateInsights()
+        {
+            if (_historyList.Items.Count == 0)
+            {
+                Text = "MoneyMorph";
+                return;
+            }
+
+            if (_historyList.Items[0] is not string latestEntry || string.IsNullOrWhiteSpace(latestEntry))
+            {
+                Text = "MoneyMorph";
+                return;
+            }
+
+            int bulletIndex = latestEntry.IndexOf('•');
+            string summary = bulletIndex >= 0 && bulletIndex + 1 < latestEntry.Length
+                ? latestEntry[(bulletIndex + 1)..].Trim()
+                : latestEntry.Trim();
+
+            Text = string.IsNullOrEmpty(summary)
+                ? "MoneyMorph"
+                : $"MoneyMorph — {summary}";
         }
     }
 }

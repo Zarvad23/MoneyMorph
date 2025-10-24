@@ -126,7 +126,7 @@ namespace MoneyMorph
                         continue;
                     }
 
-                    decimal safeRate = Convert.ToDecimal(quotedRate, CultureInfo.InvariantCulture);
+                    decimal safeRate = System.Convert.ToDecimal(quotedRate, CultureInfo.InvariantCulture);
                     decimal usdPrice = decimal.Round(1m / safeRate, 6, MidpointRounding.AwayFromZero);
                     info.PriceInUsd = usdPrice;
                 }
